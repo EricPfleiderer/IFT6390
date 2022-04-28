@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from src.dataset import get_processed_dataset
 from src.models import get_model_by_name
-
+from src.transforms import *
 
 class TorchTrainable:
 
@@ -21,7 +21,7 @@ class TorchTrainable:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Processed data set
-        self.x, self.y = get_processed_dataset(self.params['seq_len'], self.params['step_size'])
+        self.x, self.y, self.transforms = get_processed_dataset(self.params['seq_len'], self.params['step_size'], self.params['transforms'])
 
         # Split into train and validation set
         split_idx = int(params['train_val_split'] * self.x.shape[0])
@@ -50,6 +50,8 @@ class TorchTrainable:
 
     def train(self):
 
+        # Model performance is evaluated in the transformed feature space
+
         for epoch in range(self.params['num_epochs']):
 
             # Training
@@ -61,7 +63,7 @@ class TorchTrainable:
                 idx_end = (i+1) * self.params['batch_size']
                 sequences = self.train_x[idx_start:idx_end, :].to(self.model.device)
                 targets = self.train_y[idx_start:idx_end, :].to(self.model.device)
-                predictions = self.model(sequences)
+                predictions = self.infer(sequences)
 
                 # Gradient update
                 self.optimizer.zero_grad()
@@ -78,14 +80,13 @@ class TorchTrainable:
             # Validation
             avg_loss = 0
             for i in range(len(self.val_x)//self.params['batch_size']):
-
                 with torch.no_grad():
                     # Batch and predictions
                     idx_start = i * self.params['batch_size']
                     idx_end = (i+1) * self.params['batch_size']
                     sequences = self.val_x[idx_start:idx_end, :].to(self.model.device)
                     targets = self.val_y[idx_start:idx_end, :].to(self.model.device)
-                    predictions = self.model(sequences)
+                    predictions = self.infer(sequences)
 
                     # Mean val loss through batch
                     batch_loss = self.criterion(predictions, targets)
@@ -95,18 +96,28 @@ class TorchTrainable:
             avg_loss /= len(self.val_x)//self.params['batch_size']
             self.history['val_loss'].append(avg_loss)
 
-            print(f"epoch #{epoch}: train loss: %1.0f, val loss: %1.0f"
+            print(f"epoch #{epoch}: train loss: %1.4f, val loss: %1.4f"
                   % (self.history['train_loss'][-1], self.history['val_loss'][-1]))
 
     def infer(self, x: Union[np.array, torch.Tensor]):
 
         """
-        Forward pass through the model.
+         x is assumed to be processed and transformed. For internal use.
+        :param x:
+        :return:
+        """
 
-        :param x: Can be a 1, 2 or 3 dimension np array or torch tensor.
+        return self.model(x.to(self.device))
+
+    def __call__(self,  x: Union[np.array, torch.Tensor]):
+
+        """
+        Predicts the next time step given a sequence or batch of sequences.
+        x is assumed to be unprocessed and untransformed.
+
+        :param x: Can be a 1 or 2 dimension np array or torch tensor.
         If x has 1 dimension, we assume it is a sequence.
         If x has 2 dimensions, we assume it is a batch of sequence.
-        If x has 3 dimensions, we assume it is a batch of sequences with a third dim for features.
 
         :return: Batch of model predictions.
         """
@@ -119,18 +130,16 @@ class TorchTrainable:
         if len(x.shape) == 1:
             x = torch.unsqueeze(x, dim=0)
 
-        # If x has 2 dimensions, we assume it is a batch of sequences.
+        transformed_x, transformers = apply_transforms(x, self.transforms)
+
         # We unsqueeze the number of features (1 in our case).
-        if len(x.shape) == 2:
-            x = torch.unsqueeze(x, dim=-1)
+        x = torch.unsqueeze(x, dim=-1)
 
-        if len(x.shape) > 3:
-            raise ValueError(f'Expected data shape is of length 1, 2 or 3. Current length is {len(x.shape)}.')
+        predictions = self.infer(x)
 
-        return self.model(x.to(self.device))
+        inverse_predictions = apply_inverse_transforms(predictions, transformers)
 
-    def __call__(self, x):
-        return self.infer(x)
+        return inverse_predictions
 
     def plot_history(self, path):
 

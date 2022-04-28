@@ -1,15 +1,15 @@
 import pickle
 import os
 
+import matplotlib.pyplot as plt
 import torch
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+
+from src.transforms import *
 
 
 class ElectricityConsumptionDataset(torch.utils.data.Dataset):
-
-    # TODO: add transforms (normalizer)
 
     def __init__(self, csv_file, root='data/'):
         self.root = root
@@ -57,6 +57,7 @@ def sliding_windows(sequence, step_size=1, seq_length=500, batch_size=64, device
         # Only yield full batches
         if x.shape[0] >= batch_size:
             yield x, torch.unsqueeze(y, dim=1)
+
             x = torch.empty(size=(0, seq_length))
             y = torch.empty(size=(0,))
 
@@ -65,15 +66,25 @@ def sliding_windows(sequence, step_size=1, seq_length=500, batch_size=64, device
                 y = y.to(device)
 
 
-def get_processed_dataset(seq_len, step_size, shuffle=True, root='data/'):  # , horizon=1
+def plot_seq(x):
+
+    plt.Figure()
+    plt.plot(range(len(x)),x)
+    plt.show()
+
+
+
+
+
+def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='data/'):  # , horizon=1
 
     """
     Since the original dataset is composed of few very long sequences of variable length, we transform the dataset
     into sequences of fixed length by using a sliding window over the original data.
 
-    :param batch_size:
     :param seq_len:
     :param step_size:
+    :param transforms:
     :param shuffle:
     :param root:
     :return:
@@ -84,6 +95,7 @@ def get_processed_dataset(seq_len, step_size, shuffle=True, root='data/'):  # , 
         'seq_len': seq_len,
         'step_size': step_size,
         'shuffle': shuffle,
+        'transforms': transforms,
     }
 
     def dir_name():
@@ -103,7 +115,7 @@ def get_processed_dataset(seq_len, step_size, shuffle=True, root='data/'):  # , 
 
     # Generate from scratch and save
     else:
-        print('Generating dataset...')
+        print('Generating dataset from scratch.')
 
         # Create a new dir
         os.mkdir(root+dir_name())
@@ -111,19 +123,20 @@ def get_processed_dataset(seq_len, step_size, shuffle=True, root='data/'):  # , 
         # Load the original dataset (preprocessed)
         base_train = ElectricityConsumptionDataset('train.csv')
 
-        # Generate a new dataset using sliding windows
+        extracted_train = [base_train[i, 1] for i in range(len(base_train))]
+
+        transformed_train, _ = apply_transforms(extracted_train, params['transforms'])
+
+        print('Applying transforms...')
+        # Apply transforms through callables
+
+        # Split the transformed sequences of variable length into subsequences of fixed length with sliding windows
         train_x = torch.empty((0, seq_len))
         train_y = torch.empty(0, 1)  # horizon
-        for id, sequence in base_train:
+        for sequence in transformed_train:
             for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, 64):
                 train_x = torch.cat((train_x, batch_subsequences), dim=0)
                 train_y = torch.cat((train_y, batch_targets), dim=0)
-
-        # Apply transformations
-        # TODO: implemented transformations using callables
-        scaler = MinMaxScaler()
-        scaler.fit(train_x)
-        train_x = torch.tensor(scaler.transform(train_x), dtype=torch.float)
 
         # Unsqueeze and shuffle
         if shuffle:
@@ -139,5 +152,5 @@ def get_processed_dataset(seq_len, step_size, shuffle=True, root='data/'):  # , 
 
     print('Dataset shape:', train_x.shape)
 
-    return train_x, train_y
+    return train_x, train_y, transforms
 
