@@ -3,20 +3,20 @@ from src.dataset import Scaler, LogTransform, LDiff
 
 dataset_space = {
     'batch_size': 500,
-    'seq_len': 700,  # MAX 720 FOR TEST SET
-    'step_size': 50,  # Low step sizes generates more data (but the additional data is highly correlated)
+    'seq_len': 500,  # MAX 720 FOR TEST SET
+    'step_size': 250,  # Low step sizes generates more data (but the additional data is highly correlated)
     'transforms': [LogTransform, Scaler],  # , LDiff  # ORDER MATTERS! (sanity checks not yet implemented)
 }
 
 LSTM_space = {
 
     # Training procedure params
-    'num_epochs': 10,
+    'num_epochs': 3,
 
     # Model params
     'model': {
-        'num_layers': 5,
-        'hidden_size': 100,
+        'num_layers': 3,
+        'hidden_size': 50,
     },
 
     # Optimizer params

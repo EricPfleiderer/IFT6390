@@ -111,19 +111,20 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
 
         # Load the original dataset (preprocessed)
         base_train = ElectricityConsumptionDataset('train.csv')
-
         extracted_train = [base_train[i, 1] for i in range(len(base_train))]
-
-        transformed_train, _ = apply_transforms(extracted_train, params['transforms'])
 
         print('Applying transforms...')
         # Apply transforms through callables
+        transformed_train = []
+        for i in range(len(extracted_train)):
+            transformed_sample, _ = apply_transforms(torch.unsqueeze(extracted_train[i], dim=0), params['transforms'])
+            transformed_train.append(torch.squeeze(transformed_sample, dim=0))
 
         # Split the transformed sequences of variable length into subsequences of fixed length with sliding windows
         train_x = torch.empty((0, seq_len))
         train_y = torch.empty(0, 1)  # horizon
         for sequence in transformed_train:
-            for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, 64):
+            for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, 128):
                 train_x = torch.cat((train_x, batch_subsequences), dim=0)
                 train_y = torch.cat((train_y, batch_targets), dim=0)
 
@@ -132,13 +133,12 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
             train_x = train_x[torch.randperm(train_x.shape[0]), :]
         train_x = torch.unsqueeze(train_x, dim=-1)
 
-        # Save the dataset if it doesnt yet exist
+        # Save the dataset if it doesn't yet exist
         pickle.dump(train_x, open(root+dir_name()+'train_x.p', 'wb'))
         pickle.dump(train_y, open(root+dir_name()+'train_y.p', 'wb'))
         pickle.dump(params, open(root+dir_name()+'params.p', 'wb'))
 
-        print('Dataset generated and saved!')
-
+    print('Dataset fetched.')
     print('Dataset shape:', train_x.shape)
 
     return train_x, train_y, transforms

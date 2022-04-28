@@ -8,6 +8,7 @@ from src.dataset import get_processed_dataset
 from src.models import get_model_by_name
 from src.transforms import *
 
+
 class TorchTrainable:
 
     """
@@ -27,6 +28,9 @@ class TorchTrainable:
         split_idx = int(params['train_val_split'] * self.x.shape[0])
         self.train_x, self.train_y = self.x[:split_idx, :], self.y[:split_idx, :]
         self.val_x, self.val_y = self.x[split_idx:, :], self.y[split_idx:, :]
+
+        print(f'Training set shape:{self.train_x.shape}')
+        print(f'Validation set shape:{self.val_x.shape}')
 
         # Torch model
         self.model = get_model_by_name(params['model_name'])

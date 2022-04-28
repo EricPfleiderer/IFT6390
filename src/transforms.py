@@ -77,13 +77,13 @@ class LDiff(DataTransform):
     pass
 
 
-def apply_transforms(x, transforms):
+def apply_transforms(x: torch.Tensor, transforms: list) -> (torch.Tensor, list):
 
     """
-    Applies transforms on a batch of sequences and returns the fitted transformers,
-    :param x:
-    :param transforms:
-    :return:
+    Applies transforms on a batch of sequences.
+    :param x: 2D tensor representing a batch of unprocessed sequences.
+    :param transforms: List of Transform callables.
+    :return: Transformed x, 2D list of fitted transformers
     """
     new_x = x.clone()
     transformers = []
@@ -101,24 +101,25 @@ def apply_transforms(x, transforms):
     return new_x, transformers
 
 
-def apply_inverse_transforms(x: torch.Tensor, transformers):
+def apply_inverse_transforms(x: torch.Tensor, transformers) -> torch.Tensor:
 
     """
-    Reverses the transforms applied to x.
-
-    :param x: Transformed batch of data.
-    :param transformers: List of callables that were applied to x (in order of application).
-    :return:
+    Reverses the transforms applied to the batch x.
+    :param x: Transformed 2D tensor representing a batch of transformed sequences.
+    :param transformers: 2D list with rows of fitted transformers (in the order they were applied).
+    :return: Untransformed sequences
     """
 
     new_x = x.clone()
     reversed = transformers.copy()
-    reversed.reverse()
+    for tfs in reversed:
+        tfs.reverse()
 
     for i in range(len(new_x)):
-        for set in reversed:
-            for transformer in set:
-                new_x[i] = transformer.inverse_transform(new_x[i])
+        for tfs in reversed:
+            for tf in tfs:
+                new_x[i] = tf.inverse_transform(new_x[i])
 
     return new_x
+
 
