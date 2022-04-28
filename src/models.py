@@ -42,7 +42,7 @@ class LSTM(nn.Module):
         # (batch_size, seq_len, hidden_size) -> (batch_size, hidden_size)
         out = out[:, -1, :]
         out = self.linear(out)
-        out = torch.nn.ReLU(out)
+        out = torch.nn.ReLU()(out)
         out = self.linear_out(out)
 
         return out
