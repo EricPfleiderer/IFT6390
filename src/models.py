@@ -18,6 +18,7 @@ class LSTM(nn.Module):
         # Layers
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size,
                             num_layers=self.num_layers, batch_first=True)
+        self.linear = nn.Linear(self.hidden_size, self.hidden_size)
         self.linear_out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, x):
@@ -37,10 +38,11 @@ class LSTM(nn.Module):
         # Propagate input through LSTM
         out, (h_out, c_out) = self.lstm(x, (h_0, c_0))
 
-        # TODO: revise
         # Select last hidden features h_t for predictions
         # (batch_size, seq_len, hidden_size) -> (batch_size, hidden_size)
         out = out[:, -1, :]
+        out = self.linear(out)
+        out = torch.nn.ReLU(out)
         out = self.linear_out(out)
 
         return out
