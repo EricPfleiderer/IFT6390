@@ -28,7 +28,6 @@ class TorchTrainable:
         split_idx = int(params['train_val_split'] * self.x.shape[0])
         self.train_x, self.train_y = self.x[:split_idx, :], self.y[:split_idx, :]
         self.val_x, self.val_y = self.x[split_idx:, :], self.y[split_idx:, :]
-
         print(f'Training set shape:{self.train_x.shape}')
         print(f'Validation set shape:{self.val_x.shape}')
 
@@ -104,13 +103,11 @@ class TorchTrainable:
                   % (self.history['train_loss'][-1], self.history['val_loss'][-1]))
 
     def infer(self, x: Union[np.array, torch.Tensor]):
-
         """
          x is assumed to be processed and transformed. For internal use.
         :param x:
         :return:
         """
-
         return self.model(x.to(self.device))
 
     def __call__(self,  x: Union[np.array, torch.Tensor]):
@@ -141,7 +138,7 @@ class TorchTrainable:
 
         predictions = self.infer(x)
 
-        inverse_predictions = apply_inverse_transforms(predictions.cpu().detach(), transformers)
+        inverse_predictions = apply_inverse_transforms(predictions.cpu().detach(), x, transformers)
 
         return inverse_predictions
 

@@ -15,16 +15,11 @@ import pickle
 # TODO: bagging
 
 
-def plot_seq(x):
-
-    plt.Figure()
-    plt.plot(range(len(x)), x)
-    plt.show()
-
-
 def run_experiment(from_save_path=None, root='experiments/'):
 
     """
+    Runs an experiment either from scratch or from save. The experiment consists of training a model and
+    then forcasting the next time steps. Training graphs, the model and its hyperparameters are stored in a new dir.
 
     :param from_save_path: Path towards a previous experiment
     :param root: root directory for archiving of individual experiments
@@ -59,7 +54,7 @@ def run_experiment(from_save_path=None, root='experiments/'):
     test_idx = 0
     test_sequence = test_set[test_idx, 1][0:params['seq_len']]
 
-    forecast_window = 50
+    forecast_window = 20
     forecast = torch.empty((0,))
 
     # Autoregressive forecasting
@@ -71,6 +66,7 @@ def run_experiment(from_save_path=None, root='experiments/'):
     full_y = test_set[test_idx, 1][0:params['seq_len']+forecast_window]
     y_pred = forecast
 
+    # Plot and save predictions
     plt.figure()
     plt.plot(range(params['seq_len'] - forecast_window,
                    params['seq_len'] + forecast_window),
@@ -78,11 +74,11 @@ def run_experiment(from_save_path=None, root='experiments/'):
              full_y[params['seq_len'] - forecast_window:
                     params['seq_len'] + forecast_window], label='true sequence')
 
-    plt.plot(range(params['seq_len'], params['seq_len'] + forecast_window), y_pred, label='model prediction')
+    plt.plot(range(params['seq_len'], params['seq_len'] + forecast_window), y_pred, label='forecast', linestyle='--')
     plt.legend()
-    plt.savefig('prediction.png')
+    plt.savefig(full_path+'prediction.png')
 
 
 run_experiment()
-#run_experiment(from_save_path='experiments/Experiment_2022-04-28 01:13:46.474846')
+# run_experiment(from_save_path='experiments/Experiment_2022-04-28 01:13:46.474846')
 

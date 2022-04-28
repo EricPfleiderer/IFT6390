@@ -98,7 +98,7 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
 
     # Load from existing
     if os.path.exists(root + dir_name()):
-        print('Loading from existing save')
+        print('Loading dataset from an existing save')
         train_x = pickle.load(open(root+dir_name()+'train_x.p', 'rb'))
         train_y = pickle.load(open(root+dir_name()+'train_y.p', 'rb'))
 
