@@ -1,7 +1,6 @@
 import pickle
 import os
 
-import matplotlib.pyplot as plt
 import torch
 import numpy as np
 import pandas as pd
@@ -64,16 +63,6 @@ def sliding_windows(sequence, step_size=1, seq_length=500, batch_size=64, device
             if device is not None:
                 x = x.to(device)
                 y = y.to(device)
-
-
-def plot_seq(x):
-
-    plt.Figure()
-    plt.plot(range(len(x)),x)
-    plt.show()
-
-
-
 
 
 def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='data/'):  # , horizon=1

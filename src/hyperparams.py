@@ -2,7 +2,7 @@ import torch
 from src.dataset import Scaler, LogTransform, LDiff
 
 dataset_space = {
-    'batch_size': 256,
+    'batch_size': 500,
     'seq_len': 700,  # MAX 720 FOR TEST SET
     'step_size': 50,  # Low step sizes generates more data (but the additional data is highly correlated)
     'transforms': [LogTransform, Scaler],  # , LDiff  # ORDER MATTERS! (sanity checks not yet implemented)
@@ -15,7 +15,7 @@ LSTM_space = {
 
     # Model params
     'model': {
-        'num_layers': 8,
+        'num_layers': 5,
         'hidden_size': 100,
     },
 

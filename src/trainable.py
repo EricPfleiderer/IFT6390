@@ -130,14 +130,14 @@ class TorchTrainable:
         if len(x.shape) == 1:
             x = torch.unsqueeze(x, dim=0)
 
-        transformed_x, transformers = apply_transforms(x, self.transforms)
+        transformed_x, transformers = apply_transforms(x.cpu().detach(), self.transforms)
 
         # We unsqueeze the number of features (1 in our case).
         x = torch.unsqueeze(x, dim=-1)
 
         predictions = self.infer(x)
 
-        inverse_predictions = apply_inverse_transforms(predictions, transformers)
+        inverse_predictions = apply_inverse_transforms(predictions.cpu().detach(), transformers)
 
         return inverse_predictions
 

@@ -57,7 +57,7 @@ class Scaler(FitTransform):
     def inverse_transform(self, z):
         if len(z.shape) == 1:
             z = torch.unsqueeze(z, dim=1)
-        return self.scaler.inverse_transform(z)
+        return torch.tensor(self.scaler.inverse_transform(z))
 
     def fit(self, x):
         return self.scaler.fit(x)
@@ -76,6 +76,7 @@ class LogTransform(DataTransform):
 class LDiff(DataTransform):
     pass
 
+
 def apply_transforms(x, transforms):
 
     """
@@ -84,7 +85,7 @@ def apply_transforms(x, transforms):
     :param transforms:
     :return:
     """
-    new_x = x.copy()
+    new_x = x.clone()
     transformers = []
 
     for i in range(len(new_x)):
@@ -100,7 +101,7 @@ def apply_transforms(x, transforms):
     return new_x, transformers
 
 
-def apply_inverse_transforms(x, transformers):
+def apply_inverse_transforms(x: torch.Tensor, transformers):
 
     """
     Reverses the transforms applied to x.
@@ -110,10 +111,14 @@ def apply_inverse_transforms(x, transformers):
     :return:
     """
 
-    new_x = x.copy()
+    new_x = x.clone()
+    reversed = transformers.copy()
+    reversed.reverse()
 
     for i in range(len(new_x)):
-        for transformer in transformers.reverse():
-            new_x[i] = transformer.inverse_transform(new_x[i])
+        for set in reversed:
+            for transformer in set:
+                new_x[i] = transformer.inverse_transform(new_x[i])
 
     return new_x
+
