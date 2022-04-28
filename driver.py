@@ -22,17 +22,33 @@ def plot_seq(x):
     plt.show()
 
 
-def run_experiment(root='experiments/'):
+def run_experiment(from_save_path=None, root='experiments/'):
 
+    """
+
+    :param from_save_path: Path towards a previous experiment
+    :param root: root directory for archiving of individual experiments
+    :return:
+    """
+
+    # Creating a dir for the experiment
     now = datetime.now()
     full_path = root + 'Experiment_' + str(now) + '/'
     os.makedirs(full_path)
 
-    params = dict(**dataset_space, **LSTM_space, **configs)
+    # Load model from previous experiment
+    if from_save_path is not None:
+        print('Loading model from previous experiment')
+        trainable = pickle.load(open(from_save_path+'trainable.p', 'rb'))
+        params = pickle.load(open(from_save_path+'params.p', 'rb'))
 
-    trainable = TorchTrainable(params)
+    # Train a new model
+    else:
+        print('Training new model')
+        params = dict(**dataset_space, **LSTM_space, **configs)
+        trainable = TorchTrainable(params)
+        trainable.train()
 
-    trainable.train()
     trainable.plot_history(full_path)
 
     pickle.dump(trainable, open(full_path+'trainable.p', 'wb'))
@@ -43,7 +59,7 @@ def run_experiment(root='experiments/'):
     test_idx = 0
     test_sequence = test_set[test_idx, 1][0:params['seq_len']]
 
-    forecast_window = 20
+    forecast_window = 50
     forecast = torch.empty((0,))
 
     # Autoregressive forecasting
@@ -68,4 +84,5 @@ def run_experiment(root='experiments/'):
 
 
 run_experiment()
+#run_experiment(from_save_path='experiments/Experiment_2022-04-28 01:13:46.474846')
 

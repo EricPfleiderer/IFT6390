@@ -120,7 +120,7 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
             transformed_sample, _ = apply_transforms(torch.unsqueeze(extracted_train[i], dim=0), params['transforms'])
             transformed_train.append(torch.squeeze(transformed_sample, dim=0))
 
-        # Split the transformed sequences of variable length into subsequences of fixed length with sliding windows
+        # Split the transformed sequences of variable length into subsequences of fixed length using sliding windows
         train_x = torch.empty((0, seq_len))
         train_y = torch.empty(0, 1)  # horizon
         for sequence in transformed_train:
