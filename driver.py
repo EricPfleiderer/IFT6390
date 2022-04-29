@@ -11,7 +11,7 @@ import pickle
 
 
 # TODO: debug model (always predicts same thing, learning the avg??) PRIORITY!!!!
-# TODO: debug l-differencing
+# TODO: debug transforms
 # TODO: hyperparam optimization
 # TODO: bagging
 

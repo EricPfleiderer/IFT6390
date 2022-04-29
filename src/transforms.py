@@ -17,6 +17,22 @@ class DataTransform(ABC):
     def inverse_transform(self, x, y):
         pass
 
+    @staticmethod
+    def validate_shape(x):
+        # Batch the single sequence as a column vector
+        if len(x.shape) == 1:
+            x = torch.unsqueeze(x, dim=1)
+        # Inverse sequences from row to column vectors
+        elif len(x.shape) == 2:
+            x = torch.permute(x, (1, 0))
+
+        elif len(x.shape) == 3:
+            x = torch.squeeze(x, dim=-1)
+            x = torch.permute(x, (1, 0))
+        else:
+            raise ValueError('Parameter shape invalid.')
+        return x
+
 
 class FitTransform(DataTransform):
 
@@ -36,26 +52,15 @@ class Scaler(FitTransform):
         self.scaler = MinMaxScaler((-1, 1))
         self.fit(Scaler.validate_shape(x))
 
-    @staticmethod
-    def validate_shape(x):
-        # Batch the single sequence as a column vector
-        if len(x.shape) == 1:
-            x = torch.unsqueeze(x, dim=1)
-        # Inverse sequences from row to column vectors
-        elif len(x.shape) == 2:
-            x = torch.permute(x, (1, 0))
-        else:
-            raise ValueError('Parameter shape invalid.')
-        return x
-
     def transform(self, x):
         x = Scaler.validate_shape(x)
         z = torch.tensor(self.scaler.transform(x), dtype=torch.float)
         return torch.squeeze(z, dim=1)
 
     def inverse_transform(self, x, y):
-        x = self.validate_shape(x)
-        return torch.tensor(self.scaler.inverse_transform(x))
+        x = Scaler.validate_shape(y)
+        z = torch.tensor(self.scaler.inverse_transform(x))
+        return torch.squeeze(z, dim=1)
 
     def fit(self, x):
         return self.scaler.fit(x)
@@ -69,10 +74,10 @@ class LogTransform(DataTransform):
     # TODO: consider clipping for numerical stability
     def transform(self, x):
         # TODO: instead of x+1, change 0 values for avg with surrounding values
-        return torch.log(x+1)
+        return torch.squeeze(torch.log(x+1), dim=0)
 
     def inverse_transform(self, x, y):
-        return torch.exp(y) - 1
+        return torch.squeeze(torch.exp(y) - 1, dim=0)
 
 
 class LDiff(DataTransform):

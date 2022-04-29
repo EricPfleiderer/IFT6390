@@ -13,13 +13,13 @@ dataset_space = {
     'step_size': 100,
 
     # Transforms to be applied to the data. Order matters. Must be callable and non instantiated.
-    'transforms': [LogTransform],  #, LDiff , Scaler
+    'transforms': [LogTransform, Scaler],  #, LDiff ,
 }
 
 LSTM_space = {
 
     # Training procedure params
-    'num_epochs': 10,
+    'num_epochs': 2,
 
     # Model params
     'model': {
