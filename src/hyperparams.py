@@ -1,30 +1,30 @@
 import torch
-from src.dataset import Scaler, LogTransform, LDiff
+from src.dataset import LogTransform, LDiff
 
 dataset_space = {
 
     # Batch size affects computation time and the quality of the gradient estimate. Affects gpu memory.
-    'batch_size': 512,
+    'batch_size': 1024,
 
     # Max value should be 720 as per our test set. Affects gpu memory.
     'seq_len': 500,
 
     # Controls the amount of data generated. Added data will be highly correlated. Does not affect GPU memory.
-    'step_size': 50,
+    'step_size': 10,
 
     # Transforms to be applied to the data. Order matters. Must be callable and non instantiated.
-    'transforms': [],  # LogTransform, Scaler, LDiff
+    'transforms': [],  # LogTransform, LDiff
 }
 
 LSTM_space = {
 
     # Training procedure params
-    'num_epochs': 2,
+    'num_epochs': 10,
 
     # Model params
     'model': {
-        'num_layers': 5,  # affects gpu memory
-        'hidden_size': 50,  # affects gpu memory
+        'num_layers': 3,  # affects gpu memory
+        'hidden_size': 40,  # affects gpu memory
         'forecast_window': 120,
     },
 
@@ -32,8 +32,8 @@ LSTM_space = {
     'optimizer': {
         'type': torch.optim.Adam,
         'opt_params': {
-            'lr': 0.001,
-            'weight_decay': 0.2
+            'lr': 0.0005,
+            'weight_decay': 0.01
         }
     }
 }

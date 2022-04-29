@@ -124,13 +124,19 @@ def apply_transforms(x: torch.Tensor, transforms: list) -> (torch.Tensor, list):
     :param transforms: List of Transform callables.
     :return: Transformed x, 2D list of fitted transformers
     """
-    new_x = [torch.squeeze(x.clone(), dim=0)]
+    new_x = []
     transformers = []
 
-    for i in range(len(new_x)):
+    for idx, transform in enumerate(transforms):
         tfs = []
-        for transform in transforms:
-            transformer = transform(new_x[i])  # Initializing object from transform class
+        for i in range(len(new_x)):
+
+            if idx == 0:
+                source = x
+            else:
+                source = new_x
+
+            transformer = transform(source[i])  # Initializing object from transform class
             new_x[i] = transformer.transform(new_x[i])
             tfs.append(transformer)
         transformers.append(tfs)

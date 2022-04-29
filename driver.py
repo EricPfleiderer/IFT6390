@@ -52,26 +52,37 @@ def run_experiment(from_save_path=None, root='experiments/'):
 
     test_set = ElectricityConsumptionDataset('test.csv')
 
-    test_idx = 10
-    test_sequence = test_set[test_idx, 1][0:params['seq_len']]
-
-    forecast = torch.squeeze(trainable(test_sequence), dim=0)
-
-    full_y = test_set[test_idx, 1][0:params['seq_len']+params['model']['forecast_window']]
-
-    # Plot and save predictions
-    plt.figure()
-    plt.plot(range(params['seq_len'] - params['model']['forecast_window'],
-                   params['seq_len'] + params['model']['forecast_window']),
-
-             full_y[params['seq_len'] - params['model']['forecast_window']:
-                    params['seq_len'] + params['model']['forecast_window']], label='true sequence')
-
-    plt.plot(range(params['seq_len'], params['seq_len'] + params['model']['forecast_window']), forecast, label='forecast', linestyle='--')
-    plt.legend()
-    plt.savefig(full_path+'prediction.png')
+    # Test samples
+    test_idxs = (10, 56, 43)
+    test_sequences = torch.empty((0, params['seq_len']))
+    for idx in test_idxs:
+        test_sequences = torch.cat((test_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']], dim=0)))
 
 
-run_experiment('experiments/Experiment_2022-04-28 23:44:02.871440/')
+    # Test samples extended to cover the prediction horizon
+    full_sequences = torch.empty((0, params['seq_len']+params['model']['forecast_window']))
+    for idx in test_idxs:
+        full_sequences = torch.cat((full_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']+params['model']['forecast_window']], dim=0)))
+
+    # Model predictions
+    forecasts = torch.squeeze(trainable(test_sequences), dim=0)
+
+    # Print a few samples
+    for forecast, full_y, idx in zip(forecasts, full_sequences, test_idxs):
+
+        # Plot and save predictions
+        plt.figure()
+        plt.plot(range(params['seq_len'] - params['model']['forecast_window'],
+                       params['seq_len'] + params['model']['forecast_window']),
+
+                 full_y[params['seq_len'] - params['model']['forecast_window']:
+                        params['seq_len'] + params['model']['forecast_window']], label='true sequence')
+
+        plt.plot(range(params['seq_len'], params['seq_len'] + params['model']['forecast_window']), forecast, label='forecast', linestyle='--')
+        plt.legend()
+        plt.savefig(full_path+f'prediction_idx{idx}.png')
 
 
+# run_experiment('experiments/Experiment_2022-04-28 23:44:02.871440/')
+
+run_experiment()

@@ -82,6 +82,24 @@ class MyScaler:
         return x_std * (self.max - self.min) + self.min
 
 
+def scale_batch_row_vectors(x, scaler):
+    # x is 2d
+    out = torch.empty(x.shape)
+    for i in range(len(x)):
+        new_x = torch.tensor(scaler.transform(torch.unsqueeze(x[i], dim=1)))
+        out[i] = torch.squeeze(torch.permute(new_x, (0, 1)), dim=1)
+    return out
+
+
+def rescale_batch_row_vectors(x, scaler):
+    # x is 2d
+    out = torch.empty(x.shape)
+    for i in range(len(x)):
+        new_x = torch.tensor(scaler.inverse_transform(torch.unsqueeze(x[i], dim=1)))
+        out[i] = torch.squeeze(torch.permute(new_x, (0, 1)), dim=1)
+    return out
+
+
 def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, train_val_split=0.8, shuffle=True, root='data/'):
 
     """
@@ -137,17 +155,10 @@ def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, t
         base_train = ElectricityConsumptionDataset('train.csv')
         extracted_train = [base_train[i, 1] for i in range(len(base_train))]
 
-        print('Applying transforms...')
-        # Apply transforms through callables (transforms could possibly leak data into val set (ie l differencing))
-        transformed_train = []
-        for i in range(len(extracted_train)):
-            transformed_sample, _ = apply_transforms(torch.unsqueeze(extracted_train[i], dim=0), params['transforms'])
-            transformed_train.append(torch.squeeze(transformed_sample, dim=0))
-
         # Split into train and validation set
-        split_idx = int(params['train_val_split'] * len(transformed_train))
-        train_data = transformed_train[0:split_idx]
-        val_data = transformed_train[split_idx:]
+        split_idx = int(params['train_val_split'] * len(extracted_train))
+        train_data = extracted_train[0:split_idx]
+        val_data = extracted_train[split_idx:]
         train_x = torch.empty((0, seq_len))
         train_y = torch.empty(0, forecast_window)  # horizon
         val_x = torch.empty((0, seq_len))
@@ -176,11 +187,12 @@ def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, t
         val_x = torch.unsqueeze(val_x, dim=-1)
 
         # Fit the scaler on training data only
-        scaler = MyScaler(train_x, train_y)
+        # scaler = MyScaler(train_x, train_y)
+        scaler = MinMaxScaler()
+        scaler.fit(torch.unsqueeze(torch.cat((torch.flatten(train_x), torch.flatten(train_y))), dim=1))
 
-        # Transform both train and val data
-        train_x, train_y = scaler.transform(train_x), scaler.transform(train_y)
-        val_x, val_y = scaler.transform(val_x), scaler.transform(val_y)
+        train_x, train_y = scale_batch_row_vectors(torch.squeeze(train_x, dim=-1), scaler), scale_batch_row_vectors(train_y, scaler)
+        val_x, val_y = scale_batch_row_vectors(torch.squeeze(val_x, dim=-1), scaler), scale_batch_row_vectors(val_y, scaler)
 
         # Save the dataset if it doesn't yet exist
         pickle.dump(train_x, open(root+dir_name()+'train_x.p', 'wb'))

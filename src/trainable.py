@@ -50,9 +50,7 @@ class TorchTrainable:
     def train(self):
 
         # Model performance is evaluated in the transformed feature space
-
         for epoch in range(self.params['num_epochs']):
-
 
             # Training
             avg_loss = 0
@@ -63,9 +61,9 @@ class TorchTrainable:
                 idx_end = (i+1) * self.params['batch_size']
                 sequences = self.train_x[idx_start:idx_end, :].to(self.model.device)
                 targets = self.train_y[idx_start:idx_end, :].to(self.model.device)
-                predictions = self.infer(sequences)
+                predictions = self.infer(torch.unsqueeze(sequences, dim=2))
 
-                if epoch > 3:
+                if epoch == 2:
                     a = 10
                 self.optimizer.zero_grad()
                 batch_loss = self.criterion(predictions, targets)
@@ -86,7 +84,7 @@ class TorchTrainable:
                     idx_end = (i+1) * self.params['batch_size']
                     sequences = self.val_x[idx_start:idx_end, :].to(self.model.device)
                     targets = self.val_y[idx_start:idx_end, :].to(self.model.device)
-                    predictions = self.infer(sequences)
+                    predictions = self.infer(torch.unsqueeze(sequences, dim=2))
 
                     # Mean val loss through batch
                     batch_loss = self.criterion(predictions, targets)
@@ -128,19 +126,18 @@ class TorchTrainable:
         if len(x.shape) == 1:
             x = torch.unsqueeze(x, dim=0)
 
-        transformed_x, transformers = apply_transforms(x.cpu().detach(), self.transforms)
+        from src.dataset import scale_batch_row_vectors, rescale_batch_row_vectors
+
+        scaled_x = scale_batch_row_vectors(x.cpu().detach(), self.scaler)
 
         # We unsqueeze the number of features (1 in our case).
-        x = torch.unsqueeze(x, dim=-1)
+        input_x = torch.unsqueeze(scaled_x, dim=-1).to(self.device)
 
-        predictions = self.infer(x)
+        predictions = self.infer(input_x)
 
-        predictions = self.scaler.inverse_transform(predictions)
+        rescaled_predictions = rescale_batch_row_vectors(predictions.cpu().detach(), self.scaler)
 
-        #TODO: sanity check on order of transformers
-        inverse_predictions = apply_inverse_transforms(x, predictions.cpu().detach(), transformers)
-
-        return inverse_predictions
+        return rescaled_predictions.cpu().detach()
 
     def plot_history(self, path):
 
