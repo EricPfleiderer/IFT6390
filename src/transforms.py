@@ -33,20 +33,19 @@ class Scaler(FitTransform):
         normalizes dim 0, so sequences must be columns
         :param x: Single sequence, or 2d array with row sequences.
         """
-
-        self.scaler = MinMaxScaler()
+        self.scaler = MinMaxScaler((-1, 1))
         self.fit(Scaler.validate_shape(x))
 
     @staticmethod
     def validate_shape(x):
-
         # Batch the single sequence as a column vector
         if len(x.shape) == 1:
             x = torch.unsqueeze(x, dim=1)
-
         # Inverse sequences from row to column vectors
         elif len(x.shape) == 2:
             x = torch.permute(x, (1, 0))
+        else:
+            raise ValueError('Parameter shape invalid.')
         return x
 
     def transform(self, x):
@@ -55,9 +54,8 @@ class Scaler(FitTransform):
         return torch.squeeze(z, dim=1)
 
     def inverse_transform(self, x, y):
-        if len(y.shape) == 1:
-            y = torch.unsqueeze(y, dim=1)
-        return torch.tensor(self.scaler.inverse_transform(y))
+        x = self.validate_shape(x)
+        return torch.tensor(self.scaler.inverse_transform(x))
 
     def fit(self, x):
         return self.scaler.fit(x)
@@ -106,14 +104,10 @@ class LDiff(DataTransform):
         return new_x
 
     def inverse_transform(self, x, y):
-
         new_x = torch.squeeze(x, dim=0)
         new_x = torch.squeeze(new_x, dim=1)
-
         full_seq = torch.cat((new_x, y))
-
         new_z = self.addition(full_seq, i=len(full_seq)-1)
-
         return new_z
 
 
@@ -138,11 +132,12 @@ def apply_transforms(x: torch.Tensor, transforms: list) -> (torch.Tensor, list):
     return torch.unsqueeze(new_x[0], dim=0), transformers
 
 
-def apply_inverse_transforms(y:torch.Tensor, x: torch.Tensor, transformers) -> torch.Tensor:
+def apply_inverse_transforms(x: torch.Tensor, y: torch.Tensor, transformers) -> torch.Tensor:
 
     """
     Reverses the transforms applied to the batch x.
     :param x: Transformed 2D tensor representing a batch of transformed sequences.
+    :param y: Model prediction to be converted back to original space.
     :param transformers: 2D list with rows of fitted transformers (in the order they were applied).
     :return: Untransformed sequences
     """

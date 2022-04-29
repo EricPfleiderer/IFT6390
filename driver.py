@@ -9,8 +9,9 @@ from datetime import datetime
 import os
 import pickle
 
-# TODO: implement l-differencing
-# TODO: revise / debug / sanity checks
+
+# TODO: debug model (always predicts same thing, learning the avg??) PRIORITY!!!!
+# TODO: debug l-differencing
 # TODO: hyperparam optimization
 # TODO: bagging
 
@@ -51,30 +52,22 @@ def run_experiment(from_save_path=None, root='experiments/'):
 
     test_set = ElectricityConsumptionDataset('test.csv')
 
-    test_idx = 0
+    test_idx = 5
     test_sequence = test_set[test_idx, 1][0:params['seq_len']]
 
-    forecast_window = 20
-    forecast = torch.empty((0,))
+    forecast = torch.squeeze(trainable(test_sequence), dim=0)
 
-    # Autoregressive forecasting
-    for i in range(forecast_window):
-        current_seq = torch.cat((test_sequence[i:], forecast))
-        next_value = torch.squeeze(trainable(current_seq), dim=1)
-        forecast = torch.cat((next_value, forecast))
-
-    full_y = test_set[test_idx, 1][0:params['seq_len']+forecast_window]
-    y_pred = forecast
+    full_y = test_set[test_idx, 1][0:params['seq_len']+params['model']['forecast_window']]
 
     # Plot and save predictions
     plt.figure()
-    plt.plot(range(params['seq_len'] - forecast_window,
-                   params['seq_len'] + forecast_window),
+    plt.plot(range(params['seq_len'] - params['model']['forecast_window'],
+                   params['seq_len'] + params['model']['forecast_window']),
 
-             full_y[params['seq_len'] - forecast_window:
-                    params['seq_len'] + forecast_window], label='true sequence')
+             full_y[params['seq_len'] - params['model']['forecast_window']:
+                    params['seq_len'] + params['model']['forecast_window']], label='true sequence')
 
-    plt.plot(range(params['seq_len'], params['seq_len'] + forecast_window), y_pred, label='forecast', linestyle='--')
+    plt.plot(range(params['seq_len'], params['seq_len'] + params['model']['forecast_window']), forecast, label='forecast', linestyle='--')
     plt.legend()
     plt.savefig(full_path+'prediction.png')
 

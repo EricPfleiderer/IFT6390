@@ -7,25 +7,25 @@ dataset_space = {
     'batch_size': 512,
 
     # Max value should be 720 as per our test set. Affects gpu memory.
-    'seq_len': 240,
+    'seq_len': 500,
 
     # Controls the amount of data generated. Added data will be highly correlated. Does not affect GPU memory.
-    'step_size': 10,
+    'step_size': 100,
 
     # Transforms to be applied to the data. Order matters. Must be callable and non instantiated.
-    # TODO: implement l-differencing transform
-    'transforms': [LogTransform, Scaler],  # , LDiff
+    'transforms': [LogTransform],  #, LDiff , Scaler
 }
 
 LSTM_space = {
 
     # Training procedure params
-    'num_epochs': 5,
+    'num_epochs': 10,
 
     # Model params
     'model': {
         'num_layers': 5,  # affects gpu memory
         'hidden_size': 50,  # affects gpu memory
+        'forecast_window': 120,
     },
 
     # Optimizer params
@@ -33,7 +33,7 @@ LSTM_space = {
         'type': torch.optim.Adam,
         'opt_params': {
             'lr': 0.001,
-            'weight_decay': 0.1
+            'weight_decay': 0.2
         }
     }
 }

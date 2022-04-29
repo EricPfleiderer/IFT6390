@@ -20,16 +20,12 @@ class TorchTrainable:
         # Parameters
         self.params = params
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.transforms = params['transforms']
 
         # Processed data set
-        self.x, self.y, self.transforms = get_processed_dataset(self.params['seq_len'], self.params['step_size'], self.params['transforms'])
-
-        # Split into train and validation set
-        split_idx = int(params['train_val_split'] * self.x.shape[0])
-        self.train_x, self.train_y = self.x[:split_idx, :], self.y[:split_idx, :]
-        self.val_x, self.val_y = self.x[split_idx:, :], self.y[split_idx:, :]
-        print(f'Training set shape:{self.train_x.shape}')
-        print(f'Validation set shape:{self.val_x.shape}')
+        self.train_x, self.train_y, self.val_x, self.val_y = \
+            get_processed_dataset(self.params['seq_len'], self.params['step_size'], self.params['transforms'],
+                                  self.params['model']['forecast_window'], self.params['train_val_split'])
 
         # Torch model
         self.model = get_model_by_name(params['model_name'])
@@ -57,6 +53,7 @@ class TorchTrainable:
 
         for epoch in range(self.params['num_epochs']):
 
+
             # Training
             avg_loss = 0
             for i in range(len(self.train_x)//self.params['batch_size']):
@@ -68,13 +65,13 @@ class TorchTrainable:
                 targets = self.train_y[idx_start:idx_end, :].to(self.model.device)
                 predictions = self.infer(sequences)
 
-                # Gradient update
+                if epoch > 3:
+                    a = 10
                 self.optimizer.zero_grad()
                 batch_loss = self.criterion(predictions, targets)
                 batch_loss.backward()
-                self.optimizer.step()
-
                 avg_loss += batch_loss.item()
+                self.optimizer.step()
 
             # Average training loss
             avg_loss /= len(self.train_x)//self.params['batch_size']
@@ -138,7 +135,9 @@ class TorchTrainable:
 
         predictions = self.infer(x)
 
-        inverse_predictions = apply_inverse_transforms(predictions.cpu().detach(), x, transformers)
+
+        #TODO: sanity check on order of transformers
+        inverse_predictions = apply_inverse_transforms(x, predictions.cpu().detach(), transformers)
 
         return inverse_predictions
 

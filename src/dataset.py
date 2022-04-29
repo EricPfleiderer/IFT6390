@@ -38,34 +38,34 @@ class ElectricityConsumptionDataset(torch.utils.data.Dataset):
         return self.df.iloc[idx]
 
 
-def sliding_windows(sequence, step_size=1, seq_length=500, batch_size=64, device=None):
+def sliding_windows(sequence, step_size=1, seq_length=500, forecast_window=24, batch_size=128, device=None):
 
     x = torch.empty(size=(0, seq_length), dtype=torch.float)
-    y = torch.empty(size=(0,), dtype=torch.float)
+    y = torch.empty(size=(0, forecast_window), dtype=torch.float)
 
     if device is not None:
         x = x.to(device)
         y = y.to(device)
 
-    for i in range(0, len(sequence)-seq_length-1, step_size):
+    for i in range(0, len(sequence)-(seq_length+forecast_window)-1, step_size):
 
         # Build batch
         x = torch.cat((x, torch.unsqueeze(sequence[i:(i+seq_length)], dim=0)), dim=0)
-        y = torch.cat((y, torch.unsqueeze(sequence[i+seq_length], dim=0)))
+        y = torch.cat((y, torch.unsqueeze(sequence[i+seq_length: i+seq_length+forecast_window], dim=0)))
 
         # Only yield full batches
         if x.shape[0] >= batch_size:
-            yield x, torch.unsqueeze(y, dim=1)
+            yield x, y
 
             x = torch.empty(size=(0, seq_length))
-            y = torch.empty(size=(0,))
+            y = torch.empty(size=(0, forecast_window))
 
             if device is not None:
                 x = x.to(device)
                 y = y.to(device)
 
 
-def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='data/'):  # , horizon=1
+def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, train_val_split=0.8, shuffle=True, root='data/'):
 
     """
     Since the original dataset is composed of few very long sequences of variable length, we transform the dataset
@@ -74,6 +74,8 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
     :param seq_len:
     :param step_size:
     :param transforms:
+    :param forecast_window:
+    :param train_val_split
     :param shuffle:
     :param root:
     :return:
@@ -85,6 +87,8 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
         'step_size': step_size,
         'shuffle': shuffle,
         'transforms': transforms,
+        'forecast_window': forecast_window,
+        'train_val_split': train_val_split,
     }
 
     def dir_name():
@@ -101,6 +105,8 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
         print('Loading dataset from an existing save')
         train_x = pickle.load(open(root+dir_name()+'train_x.p', 'rb'))
         train_y = pickle.load(open(root+dir_name()+'train_y.p', 'rb'))
+        val_x = pickle.load(open(root+dir_name()+'val_x.p', 'rb'))
+        val_y = pickle.load(open(root+dir_name()+'val_y.p', 'rb'))
 
     # Generate from scratch and save
     else:
@@ -114,32 +120,51 @@ def get_processed_dataset(seq_len, step_size, transforms, shuffle=True, root='da
         extracted_train = [base_train[i, 1] for i in range(len(base_train))]
 
         print('Applying transforms...')
-        # Apply transforms through callables
+        # Apply transforms through callables (transforms could possibly leak data into val set (ie l differencing))
         transformed_train = []
         for i in range(len(extracted_train)):
             transformed_sample, _ = apply_transforms(torch.unsqueeze(extracted_train[i], dim=0), params['transforms'])
             transformed_train.append(torch.squeeze(transformed_sample, dim=0))
 
-        # Split the transformed sequences of variable length into subsequences of fixed length using sliding windows
+        # Split into train and validation set
+        split_idx = int(params['train_val_split'] * len(transformed_train))
+        train_data = transformed_train[0:split_idx]
+        val_data = transformed_train[split_idx:]
         train_x = torch.empty((0, seq_len))
-        train_y = torch.empty(0, 1)  # horizon
-        for sequence in transformed_train:
-            for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, 128):
+        train_y = torch.empty(0, forecast_window)  # horizon
+        val_x = torch.empty((0, seq_len))
+        val_y = torch.empty((0, forecast_window))
+
+        # Splitting the transformed sequences of variable length into subsequences of fixed length using sliding windows
+        # Training and validation data must be labelled independently to avoid data leaks from train to val set.
+
+        # Train data
+        for sequence in train_data:
+            for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, forecast_window):
                 train_x = torch.cat((train_x, batch_subsequences), dim=0)
                 train_y = torch.cat((train_y, batch_targets), dim=0)
+
+        # Validation data
+        for sequence in val_data:
+            for batch_subsequences, batch_targets in sliding_windows(sequence, step_size, seq_len, forecast_window):
+                val_x = torch.cat((val_x, batch_subsequences), dim=0)
+                val_y = torch.cat((val_y, batch_targets), dim=0)
 
         # Unsqueeze and shuffle
         if shuffle:
             train_x = train_x[torch.randperm(train_x.shape[0]), :]
+            val_x = val_x[torch.randperm(val_x.shape[0]), :]
         train_x = torch.unsqueeze(train_x, dim=-1)
+        val_x = torch.unsqueeze(val_x, dim=-1)
 
         # Save the dataset if it doesn't yet exist
         pickle.dump(train_x, open(root+dir_name()+'train_x.p', 'wb'))
         pickle.dump(train_y, open(root+dir_name()+'train_y.p', 'wb'))
-        pickle.dump(params, open(root+dir_name()+'params.p', 'wb'))
+        pickle.dump(val_x, open(root+dir_name()+'val_x.p', 'wb'))
+        pickle.dump(val_y, open(root+dir_name()+'val_y.p', 'wb'))
+        pickle.dump(params, open(root+dir_name()+'ds_params.p', 'wb'))
 
-    print('Dataset fetched.')
-    print('Dataset shape:', train_x.shape)
+        print('Dataset fetched.')
+        print('Dataset shape:', train_x.shape)
 
-    return train_x, train_y, transforms
-
+    return train_x, train_y, val_x, val_y
