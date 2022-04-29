@@ -52,7 +52,7 @@ def run_experiment(from_save_path=None, root='experiments/'):
 
     test_set = ElectricityConsumptionDataset('test.csv')
 
-    test_idx = 5
+    test_idx = 10
     test_sequence = test_set[test_idx, 1][0:params['seq_len']]
 
     forecast = torch.squeeze(trainable(test_sequence), dim=0)
@@ -72,6 +72,6 @@ def run_experiment(from_save_path=None, root='experiments/'):
     plt.savefig(full_path+'prediction.png')
 
 
-run_experiment()
-# run_experiment(from_save_path='experiments/Experiment_2022-04-28 01:13:46.474846')
+run_experiment('experiments/Experiment_2022-04-28 23:44:02.871440/')
+
 

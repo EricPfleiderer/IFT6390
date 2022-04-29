@@ -65,6 +65,23 @@ def sliding_windows(sequence, step_size=1, seq_length=500, forecast_window=24, b
                 y = y.to(device)
 
 
+class MyScaler:
+
+    def __init__(self, x, y, feature_range=(0., 1.)):
+        train_samples = torch.cat((torch.flatten(x), torch.flatten(y)))
+        self.max = torch.max(train_samples)
+        self.min = torch.min(train_samples)
+        self.feature_range = feature_range
+
+    def transform(self, x):
+        std = (x - self.min) / (self.max - self.min)
+        return std * (self.feature_range[1]-self.feature_range[0]) + self.feature_range[0]
+
+    def inverse_transform(self, x_scaled):
+        x_std = x_scaled / (self.feature_range[1]-self.feature_range[0]) - self.feature_range[0]
+        return x_std * (self.max - self.min) + self.min
+
+
 def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, train_val_split=0.8, shuffle=True, root='data/'):
 
     """
@@ -107,6 +124,7 @@ def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, t
         train_y = pickle.load(open(root+dir_name()+'train_y.p', 'rb'))
         val_x = pickle.load(open(root+dir_name()+'val_x.p', 'rb'))
         val_y = pickle.load(open(root+dir_name()+'val_y.p', 'rb'))
+        scaler = pickle.load(open(root+dir_name()+'scaler.p', 'rb'))
 
     # Generate from scratch and save
     else:
@@ -157,14 +175,21 @@ def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, t
         train_x = torch.unsqueeze(train_x, dim=-1)
         val_x = torch.unsqueeze(val_x, dim=-1)
 
+        # Fit the scaler on training data only
+        scaler = MyScaler(train_x, train_y)
+
+        # Transform both train and val data
+        train_x, train_y = scaler.transform(train_x), scaler.transform(train_y)
+        val_x, val_y = scaler.transform(val_x), scaler.transform(val_y)
+
         # Save the dataset if it doesn't yet exist
         pickle.dump(train_x, open(root+dir_name()+'train_x.p', 'wb'))
         pickle.dump(train_y, open(root+dir_name()+'train_y.p', 'wb'))
         pickle.dump(val_x, open(root+dir_name()+'val_x.p', 'wb'))
         pickle.dump(val_y, open(root+dir_name()+'val_y.p', 'wb'))
         pickle.dump(params, open(root+dir_name()+'ds_params.p', 'wb'))
-
+        pickle.dump(scaler, open(root+dir_name()+'scaler.p', 'wb'))
         print('Dataset fetched.')
         print('Dataset shape:', train_x.shape)
 
-    return train_x, train_y, val_x, val_y
+    return train_x, train_y, val_x, val_y, scaler

@@ -23,9 +23,9 @@ class TorchTrainable:
         self.transforms = params['transforms']
 
         # Processed data set
-        self.train_x, self.train_y, self.val_x, self.val_y = \
-            get_processed_dataset(self.params['seq_len'], self.params['step_size'], self.params['transforms'],
-                                  self.params['model']['forecast_window'], self.params['train_val_split'])
+        self.train_x, self.train_y, self.val_x, self.val_y, self.scaler = get_processed_dataset(
+            self.params['seq_len'], self.params['step_size'], self.params['transforms'],
+            self.params['model']['forecast_window'], self.params['train_val_split'])
 
         # Torch model
         self.model = get_model_by_name(params['model_name'])
@@ -135,6 +135,7 @@ class TorchTrainable:
 
         predictions = self.infer(x)
 
+        predictions = self.scaler.inverse_transform(predictions)
 
         #TODO: sanity check on order of transformers
         inverse_predictions = apply_inverse_transforms(x, predictions.cpu().detach(), transformers)

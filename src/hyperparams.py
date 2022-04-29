@@ -10,10 +10,10 @@ dataset_space = {
     'seq_len': 500,
 
     # Controls the amount of data generated. Added data will be highly correlated. Does not affect GPU memory.
-    'step_size': 100,
+    'step_size': 50,
 
     # Transforms to be applied to the data. Order matters. Must be callable and non instantiated.
-    'transforms': [LogTransform, Scaler],  #, LDiff ,
+    'transforms': [],  # LogTransform, Scaler, LDiff
 }
 
 LSTM_space = {
