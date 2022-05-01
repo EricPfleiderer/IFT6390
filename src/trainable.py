@@ -94,7 +94,7 @@ class TorchTrainable:
             avg_loss /= len(self.val_x)//self.params['batch_size']
             self.history['val_loss'].append(avg_loss)
 
-            print(f"epoch #{epoch}: train loss: %1.4f, val loss: %1.4f"
+            print(f"epoch #{epoch}: train loss: %1.8f, val loss: %1.8f"
                   % (self.history['train_loss'][-1], self.history['val_loss'][-1]))
 
     def infer(self, x: Union[np.array, torch.Tensor]):

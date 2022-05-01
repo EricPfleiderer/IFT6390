@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 import torch
 
 from src.dataset import ElectricityConsumptionDataset
@@ -52,35 +53,50 @@ def run_experiment(from_save_path=None, root='experiments/'):
 
     test_set = ElectricityConsumptionDataset('test.csv')
 
-    # Test samples
-    test_idxs = (10, 56, 43)
-    test_sequences = torch.empty((0, params['seq_len']))
-    for idx in test_idxs:
-        test_sequences = torch.cat((test_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']], dim=0)))
+    out = torch.empty((0, 120))
 
+    print('Forecasting...')
+    for i in range(len(test_set)):
+        if i % 100 == 0:
+            print(i)
+        forecast = torch.squeeze(trainable(test_set[i, 1][-params['seq_len']:]))
+        out = torch.cat((out, torch.unsqueeze(forecast, dim=0)), dim=0)
 
-    # Test samples extended to cover the prediction horizon
-    full_sequences = torch.empty((0, params['seq_len']+params['model']['forecast_window']))
-    for idx in test_idxs:
-        full_sequences = torch.cat((full_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']+params['model']['forecast_window']], dim=0)))
+    cols = [f'Prediction_{i}' for i in range(1, 121)]
 
-    # Model predictions
-    forecasts = torch.squeeze(trainable(test_sequences), dim=0)
+    out_df = pd.DataFrame(out, columns=cols)
 
-    # Print a few samples
-    for forecast, full_y, idx in zip(forecasts, full_sequences, test_idxs):
+    out_df.to_csv(full_path+'submission.csv', index_label=True)
 
-        # Plot and save predictions
-        plt.figure()
-        plt.plot(range(params['seq_len'] - params['model']['forecast_window'],
-                       params['seq_len'] + params['model']['forecast_window']),
-
-                 full_y[params['seq_len'] - params['model']['forecast_window']:
-                        params['seq_len'] + params['model']['forecast_window']], label='true sequence')
-
-        plt.plot(range(params['seq_len'], params['seq_len'] + params['model']['forecast_window']), forecast, label='forecast', linestyle='--')
-        plt.legend()
-        plt.savefig(full_path+f'prediction_idx{idx}.png')
+    # # Test samples
+    # test_idxs = (1, 2, 3, 5, 10, 20, 50)
+    # test_sequences = torch.empty((0, params['seq_len']))
+    # for idx in test_idxs:
+    #     test_sequences = torch.cat((test_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']], dim=0)))
+    #
+    #
+    # # Test samples extended to cover the prediction horizon
+    # full_sequences = torch.empty((0, params['seq_len']+params['model']['forecast_window']))
+    # for idx in test_idxs:
+    #     full_sequences = torch.cat((full_sequences, torch.unsqueeze(test_set[idx, 1][0:params['seq_len']+params['model']['forecast_window']], dim=0)))
+    #
+    # # Model predictions
+    # forecasts = torch.squeeze(trainable(test_sequences), dim=0)
+    #
+    # # Print a few samples
+    # for forecast, full_y, idx in zip(forecasts, full_sequences, test_idxs):
+    #
+    #     # Plot and save predictions
+    #     plt.figure()
+    #     plt.plot(range(params['seq_len'] - params['model']['forecast_window'],
+    #                    params['seq_len'] + params['model']['forecast_window']),
+    #
+    #              full_y[params['seq_len'] - params['model']['forecast_window']:
+    #                     params['seq_len'] + params['model']['forecast_window']], label='true sequence')
+    #
+    #     plt.plot(range(params['seq_len'], params['seq_len'] + params['model']['forecast_window']), forecast, label='forecast', linestyle='--')
+    #     plt.legend()
+    #     plt.savefig(full_path+f'prediction_idx{idx}.png')
 
 
 # run_experiment('experiments/Experiment_2022-04-28 23:44:02.871440/')

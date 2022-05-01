@@ -155,6 +155,9 @@ def get_processed_dataset(seq_len, step_size, transforms, forecast_window=120, t
         base_train = ElectricityConsumptionDataset('train.csv')
         extracted_train = [base_train[i, 1] for i in range(len(base_train))]
 
+        if shuffle:
+            extracted_train = [extracted_train[i] for i in torch.randperm(len(extracted_train))]
+
         # Split into train and validation set
         split_idx = int(params['train_val_split'] * len(extracted_train))
         train_data = extracted_train[0:split_idx]
